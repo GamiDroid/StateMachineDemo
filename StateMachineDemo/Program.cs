@@ -27,6 +27,9 @@ builder.Services.AddMqtt(services =>
     return mqttClientOptions;
 });
 
+// Registreer machine state manager en handlers
+builder.Services.AddMachineStateManager();
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
