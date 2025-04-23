@@ -42,8 +42,4 @@ app.UseHttpsRedirection();
 // Map application endpoints
 app.MapChocoReworkStationEndpoints();
 
-// start MQTT connection
-var mqttConnection = app.Services.GetRequiredService<MqttConnection>();
-await mqttConnection.ConnectAsync(CancellationToken.None);
-
 app.Run();

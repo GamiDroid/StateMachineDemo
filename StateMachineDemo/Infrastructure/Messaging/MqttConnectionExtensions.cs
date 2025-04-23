@@ -8,5 +8,7 @@ public static class MqttConnectionExtensions
     {
         services.AddSingleton<MqttConnection>();
         services.AddSingleton<MqttClientOptions>(options);
+
+        services.AddHostedService<MqttConnectionService>();
     }
 }
