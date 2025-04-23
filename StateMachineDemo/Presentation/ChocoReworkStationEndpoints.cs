@@ -1,9 +1,11 @@
 ﻿using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using MQTTnet.Protocol;
 using StateMachineDemo.Infrastructure.Messaging;
 using StateMachineDemo.Infrastructure.Persistance;
 using StateMachineDemo.Infrastructure.Persistance.Tables;
+using StateMachineDemo.StateMachines;
 
 namespace StateMachineDemo.Presentation;
 
@@ -12,16 +14,25 @@ public static class ChocoReworkStationEndpoints
     public static void MapChocoReworkStationEndpoints(this IEndpointRouteBuilder app)
     {
         app.MapGet("/choco_rework_stations", GetAllChocoReworkStations)
-            .WithName("GetAllChocoReworkStations")
+            .WithName(nameof(GetAllChocoReworkStations))
             .Produces<List<ChocoReworkStation>>(StatusCodes.Status200OK);
 
         app.MapGet("/choco_rework_stations/{id}", GetChocoReworkStationById)
-        .WithName("GetChocoReworkStationById")
-        .Produces<ChocoReworkStation>(StatusCodes.Status200OK)
-        .Produces(StatusCodes.Status404NotFound);
+            .WithName(nameof(GetChocoReworkStationById))
+            .Produces<ChocoReworkStation>(StatusCodes.Status200OK)
+            .Produces(StatusCodes.Status404NotFound);
 
         app.MapPut("/choco_rework_stations/{id}", UpdateChocoReworkStation)
-            .WithName("UpdateChocoReworkStation");
+            .WithName(nameof(UpdateChocoReworkStation));
+
+        app.MapGet("/choco_rework_stations/{id}/state", GetChocoReworkStationState)
+            .WithName(nameof(GetChocoReworkStationState))
+            .Produces<MachineState>(StatusCodes.Status200OK);
+
+        app.MapPut("/choco_rework_stations/{id}/trigger/{trigger}", TriggerMachineState)
+            .WithName(nameof(TriggerMachineState))
+            .Produces<MachineState>(StatusCodes.Status200OK)
+            .Produces(StatusCodes.Status400BadRequest);
     }
 
     static Task<List<ChocoReworkStation>> GetAllChocoReworkStations(AppDbContext db)
@@ -50,6 +61,26 @@ public static class ChocoReworkStationEndpoints
         await mqtt.PublishAsync($"dcr/station{id}/state", reworkStation, MqttQualityOfServiceLevel.AtMostOnce, cancellationToken);
 
         return TypedResults.Ok(reworkStation);
+    }
+
+    static string GetChocoReworkStationState(MachineStateManagerFactory machineStateFactory, int id)
+    {
+        var machineState = machineStateFactory.Create(id);
+        return machineState.CurrentState.ToString();
+    }
+
+    static async Task<IResult> TriggerMachineState(
+        MachineStateManagerFactory machineStateFactory, int id, MachineTrigger trigger, Dictionary<string, object>? parameters = null)
+    {
+        var stateManager = machineStateFactory.Create(id);
+        var success = await stateManager.TriggerAsync(trigger, parameters);
+
+        if (success)
+        {
+            return Results.Ok(new { State = stateManager.CurrentState.ToString() });
+        }
+
+        return Results.BadRequest(new { Error = $"Cannot trigger {trigger} from current state {stateManager.CurrentState}" });
     }
 }
 
