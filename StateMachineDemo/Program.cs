@@ -1,6 +1,5 @@
 using Microsoft.EntityFrameworkCore;
 using MQTTnet;
-using StateMachineDemo.Infrastructure.Messaging;
 using StateMachineDemo.Infrastructure.Persistance;
 using StateMachineDemo.Presentation;
 
