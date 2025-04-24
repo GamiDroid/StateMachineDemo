@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.Http.HttpResults;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using MQTTnet.Protocol;
+using Stateless.Reflection;
 using StateMachineDemo.Infrastructure.Messaging;
 using StateMachineDemo.Infrastructure.Persistance;
 using StateMachineDemo.Infrastructure.Persistance.Tables;
@@ -33,6 +33,19 @@ public static class ChocoReworkStationEndpoints
             .WithName(nameof(TriggerMachineState))
             .Produces<MachineState>(StatusCodes.Status200OK)
             .Produces(StatusCodes.Status400BadRequest);
+
+        app.MapGet("/choco_rework_stations/{id}/info", GetStateMachineInfo)
+            .WithName(nameof(GetStateMachineInfo))
+            .Produces<StateMachineInfo>(StatusCodes.Status200OK);
+
+        app.MapGet("/choco_rework_stations/{id}/mermaid-diagram", GetStateMachineMermaidDiagram)
+            .WithName(nameof(GetStateMachineMermaidDiagram))
+            .Produces<string>(StatusCodes.Status200OK, contentType: "text/plain");
+
+        app.MapGet("/choco_rework_stations/{id}/permitted-triggers", GetStateMachinePermittedTriggers)
+            .WithName(nameof(GetStateMachinePermittedTriggers))
+            .Produces<MachineState[]>(StatusCodes.Status200OK);
+
     }
 
     static Task<List<ChocoReworkStation>> GetAllChocoReworkStations(AppDbContext db)
@@ -81,6 +94,25 @@ public static class ChocoReworkStationEndpoints
         }
 
         return Results.BadRequest(new { Error = $"Cannot trigger {trigger} from current state {stateManager.CurrentState}" });
+    }
+
+    static IResult GetStateMachineInfo(MachineStateManagerFactory machineStateFactory, int id)
+    {
+        var stateMachine = machineStateFactory.Create(id);
+        var info = stateMachine.GetInfo();
+        return Results.Ok(new { info.InitialState, info.States });
+    }
+
+    static IResult GetStateMachineMermaidDiagram(MachineStateManagerFactory machineStateFactory, int id)
+    {
+        var stateMachine = machineStateFactory.Create(id);
+        return Results.Text(stateMachine.GetMermaidDiagram(), contentType: "text/plain", statusCode: StatusCodes.Status200OK);
+    }
+
+    static IResult GetStateMachinePermittedTriggers(MachineStateManagerFactory machineStateFactory, int id)
+    {
+        var stateMachine = machineStateFactory.Create(id);
+        return Results.Ok(stateMachine.GetPermittedTriggers().Select(t => t.ToString()));
     }
 }
 

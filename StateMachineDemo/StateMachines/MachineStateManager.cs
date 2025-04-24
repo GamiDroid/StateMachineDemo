@@ -1,5 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Stateless;
+using Stateless.Graph;
+using Stateless.Reflection;
 using StateMachineDemo.Infrastructure.Persistance;
 using StateMachineDemo.Infrastructure.Persistance.Tables;
 using StateMachineDemo.StateMachines.Operations;
@@ -145,6 +147,21 @@ public class MachineStateManager
             _logger.LogError(ex, "Error triggering {Trigger} on machine {ReworkStationId}", trigger, _reworkStationId);
             return false;
         }
+    }
+
+    public StateMachineInfo GetInfo()
+    {
+        return _stateMachine.GetInfo();
+    }
+
+    public string GetMermaidDiagram()
+    {
+        return MermaidGraph.Format(_stateMachine.GetInfo());
+    }
+
+    public IEnumerable<MachineTrigger> GetPermittedTriggers()
+    {
+        return _stateMachine.PermittedTriggers;
     }
 
     private async Task ExecuteOperationAsync<THandler>() where THandler : IOperationHandler
