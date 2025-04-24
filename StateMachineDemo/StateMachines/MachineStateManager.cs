@@ -1,7 +1,9 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using MQTTnet.Protocol;
 using Stateless;
 using Stateless.Graph;
 using Stateless.Reflection;
+using StateMachineDemo.Infrastructure.Messaging;
 using StateMachineDemo.Infrastructure.Persistance;
 using StateMachineDemo.Infrastructure.Persistance.Tables;
 using StateMachineDemo.StateMachines.Operations;
@@ -40,6 +42,7 @@ public class MachineStateManager
     private readonly StateMachine<MachineState, MachineTrigger> _stateMachine;
     private readonly AppDbContext _db;
     private readonly IServiceProvider _serviceProvider;
+    private readonly MqttConnection _mqtt;
     private readonly ILogger<MachineStateManager> _logger;
 
     private readonly int _reworkStationId;
@@ -49,11 +52,13 @@ public class MachineStateManager
         int reworkStationId,
         AppDbContext dbContext,
         IServiceProvider serviceProvider,
+        MqttConnection mqtt,
         ILogger<MachineStateManager> logger)
     {
         _reworkStationId = reworkStationId;
         _db = dbContext;
         _serviceProvider = serviceProvider;
+        _mqtt = mqtt;
         _logger = logger;
 
         // Laad de huidige state uit de database of begin met de standaard state
@@ -221,6 +226,9 @@ public class MachineStateManager
             }
 
             await _db.SaveChangesAsync();
+
+            await _mqtt.PublishAsync($"dcr/station{_reworkStationId}/state", instanceRecord, MqttQualityOfServiceLevel.AtMostOnce, cancellationToken: CancellationToken.None);
+
             _logger.LogInformation("Choco Rework Station {ReworkStationId} state changed to {CurrentState}", _reworkStationId, _currentState);
         }
         catch (Exception ex)
