@@ -174,9 +174,9 @@ public class MachineStateManager
         return MermaidGraph.Format(_stateMachine.GetInfo());
     }
 
-    public IEnumerable<MachineTrigger> GetPermittedTriggers()
+    public IEnumerable<TriggerDetails<MachineState, MachineTrigger>> GetPermittedTriggers()
     {
-        return _stateMachine.PermittedTriggers;
+        return _stateMachine.GetDetailedPermittedTriggers();
     }
 
     private async Task ExecuteOperationAsync<THandler>() where THandler : IOperationHandler

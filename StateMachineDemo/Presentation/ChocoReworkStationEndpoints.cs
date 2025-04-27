@@ -112,7 +112,13 @@ public static class ChocoReworkStationEndpoints
     static IResult GetStateMachinePermittedTriggers(MachineStateManagerFactory machineStateFactory, int id)
     {
         var stateMachine = machineStateFactory.Create(id);
-        return Results.Ok(stateMachine.GetPermittedTriggers().Select(t => t.ToString()));
+        return Results.Ok(stateMachine.GetPermittedTriggers().Select(x => new
+            {
+                Trigger = x.Trigger.ToString(),
+                x.HasParameters,
+                x.Parameters
+            }
+        ));
     }
 }
 
