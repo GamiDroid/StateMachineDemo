@@ -1,8 +1,8 @@
 ﻿namespace StateMachineDemo.StateMachines.Operations;
 
-public class InitializeOperationHandler(ILogger<InitializeOperationHandler> logger) : IOperationHandler
+public class PalletArrivedOperationHandler(ILogger<PalletArrivedOperationHandler> logger) : IOperationHandler
 {
-    private readonly ILogger<InitializeOperationHandler> _logger = logger;
+    private readonly ILogger<PalletArrivedOperationHandler> _logger = logger;
 
     public async Task ExecuteAsync(MachineContext context)
     {

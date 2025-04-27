@@ -13,28 +13,46 @@ namespace StateMachineDemo.StateMachines;
 // Model voor de machine state
 public enum MachineState
 {
+    /// <summary>
+    /// Er is geen order
+    /// </summary>
     NoOrder,
+
+    /// <summary>
+    /// Wacht op een pallet uit het magazijn
+    /// </summary>
     WaitPallet,
+
+    /// <summary>
+    /// Wachten tot een pallet is gescand
+    /// </summary>
     ScanPallet,
+
+    /// <summary>
+    /// Wachten tot een tank is gescand
+    /// </summary>
     ScanTank,
+
+    /// <summary>
+    /// Wachten tot een bigbag is geleegd
+    /// </summary>
     EmptyBigbag,
+
+    /// <summary>
+    /// Wachten tot een tank is gekozen
+    /// </summary>
     ChooseTank,
-    ShuttingDown
 }
 
 // Triggers/Events die state transitions kunnen veroorzaken
 public enum MachineTrigger
 {
-    Initialize,
     Start,
-    Pause,
-    Resume,
-    CompleteTask,
-    DetectError,
-    ResolveError,
-    BeginMaintenance,
-    EndMaintenance,
-    Shutdown
+    PalletArrived,
+    PalletScanned,
+    TankScanned,
+    BigbagEmptied,
+    TankChosen
 }
 
 public class MachineStateManager
@@ -80,42 +98,34 @@ public class MachineStateManager
     {
         // Configureer de state transitions met bijbehorende operaties
         _stateMachine.Configure(MachineState.NoOrder)
-            .Permit(MachineTrigger.Initialize, MachineState.WaitPallet)
-            .Permit(MachineTrigger.BeginMaintenance, MachineState.ChooseTank)
-            .OnEntryAsync(PersistStateChangeAsync);
+            .OnEntryAsync(PersistStateChangeAsync)
+            .OnEntryFromAsync(MachineTrigger.TankChosen, ExecuteOperationAsync<TankChosenOperationHandler>)
+            .Permit(MachineTrigger.Start, MachineState.WaitPallet);
 
         _stateMachine.Configure(MachineState.WaitPallet)
-            .Permit(MachineTrigger.Start, MachineState.ScanPallet)
-            .Permit(MachineTrigger.DetectError, MachineState.EmptyBigbag)
-            .OnEntryFromAsync(MachineTrigger.Initialize, ExecuteOperationAsync<InitializeOperationHandler>)
-            .OnEntryAsync(PersistStateChangeAsync);
+            .OnEntryAsync(PersistStateChangeAsync)
+            .OnEntryFromAsync(MachineTrigger.Start, ExecuteOperationAsync<StartOperationHandler>)
+            .Permit(MachineTrigger.PalletArrived, MachineState.ScanPallet);
 
         _stateMachine.Configure(MachineState.ScanPallet)
-            .Permit(MachineTrigger.Pause, MachineState.ScanTank)
-            .Permit(MachineTrigger.DetectError, MachineState.EmptyBigbag)
-            .Permit(MachineTrigger.Shutdown, MachineState.ShuttingDown)
-            .Permit(MachineTrigger.CompleteTask, MachineState.NoOrder)
-            .OnEntryFromAsync(MachineTrigger.Start, ExecuteOperationAsync<StartOperationHandler>)
-            .OnEntryFromAsync(MachineTrigger.Resume, ExecuteOperationAsync<ResumeOperationHandler>)
-            .OnEntryAsync(PersistStateChangeAsync);
+            .OnEntryAsync(PersistStateChangeAsync)
+            .OnEntryFromAsync(MachineTrigger.PalletArrived, ExecuteOperationAsync<PalletArrivedOperationHandler>)
+            .OnExitAsync(ExecuteOperationAsync<ScanPalletOperationHandler>)
+            .Permit(MachineTrigger.PalletScanned, MachineState.ScanTank);
 
         _stateMachine.Configure(MachineState.ScanTank)
-            .Permit(MachineTrigger.Resume, MachineState.ScanPallet)
-            .Permit(MachineTrigger.Shutdown, MachineState.ShuttingDown)
-            .Permit(MachineTrigger.BeginMaintenance, MachineState.ChooseTank)
-            .OnEntryAsync(PersistStateChangeAsync);
+            .OnEntryAsync(PersistStateChangeAsync)
+            .OnEntryFromAsync(MachineTrigger.PalletScanned, ExecuteOperationAsync<ScanPalletOperationHandler>)
+            .Permit(MachineTrigger.TankScanned, MachineState.EmptyBigbag);
 
         _stateMachine.Configure(MachineState.EmptyBigbag)
-            .Permit(MachineTrigger.ResolveError, MachineState.NoOrder)
-            .Permit(MachineTrigger.BeginMaintenance, MachineState.ChooseTank)
+            .Permit(MachineTrigger.BigbagEmptied, MachineState.ChooseTank)
+            .OnEntryFromAsync(MachineTrigger.TankScanned, ExecuteOperationAsync<ScanTankOperationHandler>)
             .OnEntryAsync(PersistStateChangeAsync);
 
         _stateMachine.Configure(MachineState.ChooseTank)
-            .Permit(MachineTrigger.EndMaintenance, MachineState.NoOrder)
-            .OnEntryAsync(PersistStateChangeAsync);
-
-        _stateMachine.Configure(MachineState.ShuttingDown)
-            .Permit(MachineTrigger.CompleteTask, MachineState.NoOrder)
+            .Permit(MachineTrigger.TankChosen, MachineState.NoOrder)
+            .OnEntryFromAsync(MachineTrigger.BigbagEmptied, ExecuteOperationAsync<BigbagEmptiedOperationHandler>)
             .OnEntryAsync(PersistStateChangeAsync);
     }
 
