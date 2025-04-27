@@ -1,5 +1,5 @@
 ﻿using StateMachineDemo.StateMachines;
-using StateMachineDemo.StateMachines.Operations;
+using System.Reflection;
 
 #pragma warning disable IDE0130 // Namespace does not match folder structure
 namespace Microsoft.Extensions.DependencyInjection;
@@ -8,18 +8,25 @@ namespace Microsoft.Extensions.DependencyInjection;
 // Extension methods voor DI registratie
 public static class MachineStateManagerExtensions
 {
-    public static IServiceCollection AddMachineStateManager(this IServiceCollection services)
+    public static IServiceCollection AddMachineStateManager(this IServiceCollection services, Assembly assembly)
     {
         // Registreer alle operation handlers
-
-        // TODO: Automatically register all handlers in the assembly
-        services.AddTransient<InitializeOperationHandler>();
-        services.AddTransient<StartOperationHandler>();
-        services.AddTransient<ResumeOperationHandler>();
+        AddOperationHandlersFromAssembly(services, assembly);
 
         // Registreer de state manager factory
         services.AddScoped<MachineStateManagerFactory>();
 
         return services;
+    }
+
+    private static void AddOperationHandlersFromAssembly(IServiceCollection services, Assembly assembly)
+    {
+        var operationHandlerTypes = assembly.GetTypes()
+            .Where(t => t.IsClass && !t.IsAbstract && t.IsAssignableTo(typeof(IOperationHandler)));
+
+        foreach (var operationHandlerType in operationHandlerTypes)
+        {
+            services.AddTransient(operationHandlerType);
+        }
     }
 }

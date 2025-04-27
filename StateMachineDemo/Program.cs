@@ -28,7 +28,7 @@ builder.Services.AddMqtt(services =>
 });
 
 // Registreer machine state manager en handlers
-builder.Services.AddMachineStateManager();
+builder.Services.AddMachineStateManager(typeof(Program).Assembly);
 
 var app = builder.Build();
 
